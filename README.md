@@ -8,7 +8,7 @@ My team at Syracuse University was outsourced by a hydroelectric utility company
 ## About the Data 
 Four main data sets, containing hourly records from 1999 to 2018, were provided by the hydroelectric utility company in Excel spreadsheet format. The outage data describes the two types of outages and details surrounding their occurrence. The flow and load data both explain variance in flow, the actual input or hydro energy supply, and load, the units needed to generate power. The marketing dataset provides records of energy purchases and sales. 
 
-![](https://github.com/vladimir-dinolov/Portfolio/blob/main/images/Hydro%20Data.PNG?raw=true)
+![](https://github.com/vladimir-dinolov/Portfolio/blob/main/images/Hydro%20Data.PNG)
 
 Packages used for this project: class, rsample, e1071, caret, plyr, dplyr, tidyr, lubridate, zoo, ggplot2, tm, stringr, wordcloud, plyr, factoextra, mclust, and more. 
 
