@@ -12,7 +12,7 @@ Four main data sets, containing hourly records from 1999 to 2018, were provided 
 
 Packages used for this project: class, rsample, e1071, caret, plyr, dplyr, tidyr, lubridate, zoo, ggplot2, tm, stringr, wordcloud, plyr, factoextra, mclust, and more. 
 
-## Outcome 
+## Outcomes and Recommendations 
 ### 1. Reliability of Service
 If the hydro utility company provides unreliable services, this could cause customer churn. The company must provide dependable energy to its residential, industrial, and commercial customers. A loss of load events, or a lack of supply for demand, could cost billions of dollars in revenue loss for consumers. This loss will lead consumers to explore the market and seek different utility providers. 
 
