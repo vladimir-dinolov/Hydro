@@ -1,0 +1,156 @@
+############################################################
+
+packages <- c("caret", "plyr", "dplyr", "tidyr", "lubridate", "zoo", "ggplot2", "tm","stringr", "wordcloud", "stringi", "Matrix", "tidytext", "plyr", "factoextra", "mclust", "proxy")
+
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE)
+    library(x, character.only = TRUE)
+  }
+})
+
+# remove 'packages', 'package.check' after loading the required packages.
+rm(packages)
+rm(package.check)
+
+############################################################
+#### clustering
+
+# read in the all_weekly_data
+outWeek <- read.csv(file="allData_weekly_selVari.csv", header=TRUE, sep=",", na=c("","NA"))
+# outWeek <- read.csv(file="outage_weekly.csv", header=TRUE, sep=",", na=c("","NA"))
+
+############################################################
+
+# use monthly varibility data set to create clustering
+# create new df
+outVari <- outWeek
+
+outVari$out_timing <- gsub("go", "good", outVari$out_timing)
+outVari$out_timing <- gsub("bo", "bad", outVari$out_timing)
+
+# combine year + mo.wk
+outVari$mo.wk <- gsub("_", "", outVari$mo.wk)
+outVari$week <- paste(outVari$year, outVari$mo.wk, outVari$out_timing, sep="-")
+outVari <- outVari[, c(39, 1:38)]
+
+outVari <- na.omit(outVari)
+
+# store good/bad labels
+label <- as.factor(outVari$out_timing)
+
+rownames(outVari) <- outVari$week
+outVari <- outVari[ ,-1:-4]
+
+str(outVari)
+
+# making the impact about outage, not capacity
+# outVari$poImpact.wk <- (1-outVari$poImpact.wk)
+# outVari$uoImpact.wk <- (1-outVari$uoImpact.wk)
+
+############################################################
+## ---- ----
+# create distance measures with methods of euclidean and cosine
+outVari_euc <- dist(outVari, method="euclidean")
+outVari_cos <- dist(outVari, method="cosine")
+
+## ---- ----
+# create hierachical clustering
+grp_euc <- hclust(outVari_euc, method="ward.D")
+plot(grp_euc, cex=0.6, hang=-1, main="Hierachical Clustering Monthly Data ('Ward.D')", xlab="Varibilities - in Euclidean Distance")
+# rect.hclust(grp_euc, k=2)
+
+grp_cos <- hclust(outVari_cos, method="ward.D")
+plot(grp_euc, cex=0.6, hang=-1, main="Hierachical Clustering Monthly Data ('Ward.D')", xlab="Varibilities - in Cosine Similarity")
+
+## ---- ----
+# create heat map of distance/ similarity
+fviz_dist(outVari_euc, gradient=list(low="lightskyblue", mid="white", high="salmon"))
+fviz_dist(outVari_cos, gradient=list(low="salmon", mid="white", high="lightskyblue"))
+
+## ---- ----
+# create k-measn clustering
+km <- kmeans(outVari, centers=2)
+str(km)
+t(km$centers)
+
+result <- km$cluster
+result <- as.factor(ifelse(result==2, "bad", "good"))
+
+confusionMatrix(result, label)
+
+fviz_cluster(km, data=outVari)
+
+## ---- ----
+# create k-measn clustering
+km3 <- kmeans(outVari, centers=3)
+str(km3)
+t(km3$centers)
+km3$cluster
+
+fviz_cluster(km3, data=outVari)
+
+
+########################################################
+#### text mining
+
+po[1:5,c(1:5, 19)]
+uo[1:5,c(1:5, 19)]
+
+# read description in as corpus
+crp.po <- Corpus(VectorSource(po$Description))
+crp.uo <- Corpus(VectorSource(uo$Description))
+
+# check number and list of documents read
+length(crp.po)
+summary(crp.po)
+
+length(crp.uo)
+summary(crp.uo)
+
+inspect(crp.po)
+
+# manually cleanup
+# perform text transformation to
+
+# crp.uo <- tm_map(crp.uo, content_transformer(tolower))
+# crp.uo <- tm_map(crp.uo, removePunctuation)
+# crp.uo <- tm_map(crp.uo, removeNumbers)
+# crp.uo <- tm_map(crp.uo, removeWords, stopwords("english"))
+
+# convert to DTM
+(tfreq.min <- 1)
+(tfreq.max <- Inf)
+
+# dtm.po <- DocumentTermMatrix(crp.po)
+
+dtm.po <- DocumentTermMatrix(crp.po, control=list(stopwords=TRUE, wordLengths=c(3, 25), removePunctuation=TRUE, removeNumbers=TRUE, tolower=TRUE, stemming=TRUE, remove_separators=TRUE, bounds = list(global=c(tfreq.min, tfreq.max))))
+dtm.uo <- DocumentTermMatrix(crp.uo, control=list(stopwords=TRUE, wordLengths=c(3, 25), removePunctuation=TRUE, removeNumbers=TRUE, tolower=TRUE, stemming=TRUE, remove_separators=TRUE, bounds = list(global=c(tfreq.min, tfreq.max))))
+
+inspect(dtm.po)
+inspect(dtm.uo)
+
+# convert to matrix
+mtx.po <- as.matrix(dtm.po)
+mtx.uo <- as.matrix(dtm.uo)
+
+# convert to data frame
+po.text <- data.frame(mtx.po)
+str(po.text)
+
+uo.text <- data.frame(mtx.uo)
+str(uo.text)
+
+# sum of word count
+po.txt.ct <- as.matrix(apply(po.text, 2, sum))
+uo.txt.ct <- as.matrix(apply(uo.text, 2, sum))
+
+
+# sort to see most frequent words, indicating most frequent problems, show word count > 1
+sort(po.txt.ct[which(po.txt.ct>10),1], decreasing=T)
+sort(uo.txt.ct[which(uo.txt.ct>20),1], decreasing=T)
+
+# create a word cloud
+wcloud <- wordcloud(rownames(po.txt.ct), po.txt.ct[,1])
+wcloud <- wordcloud(rownames(uo.txt.ct), uo.txt.ct[,1])
+

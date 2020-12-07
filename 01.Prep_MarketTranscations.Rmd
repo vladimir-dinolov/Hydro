@@ -1,0 +1,306 @@
+---
+title: "Hydro Outages - Marketing Data"
+author: "M.C."
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+# check and load packages
+```{r, echo=FALSE}
+packages <- c("tm","stringr", "wordcloud", "caret", "readr", "dplyr", "tidyr", "datasets", "ggplot2", "scales", "lubridate", "fpp2", "zoo")
+
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE)
+    library(x, character.only = TRUE)
+  }
+})
+
+# remove 'packages', 'package.check' after loading the required packages.
+rm(packages)
+rm(package.check)
+```
+
+# set directory
+setwd("E:/Documents/OneDrive - Syracuse University/SU/Courses/IST 707/Project/Hydro Outages")
+
+# ----------------------------------------------------------------------------------
+
+# #################
+# read in and combine sales data sets of different time periods
+```{r}
+sales2005 <- read.csv(file="m_transactions_to2005.csv", header=TRUE, sep=",", na=c("","NA"))
+sales2005 <- sales2005[ ,-8:-25] # remove extra columns
+sales2005$Year <- as.character(sales2005$Year)
+
+sales2016 <- read.csv(file="m_transactions_to2016.csv", header=TRUE, sep=",", na=c("","NA"))
+sales2011 <- read.csv(file="m_transactions_to2011.csv", header=TRUE, sep=",", na=c("","NA"))
+sales2018mar <- read.csv(file="m_transactions_march2018.csv", header=TRUE, sep=",", na=c("","NA"))
+sales2018end <- read.csv(file="m_transactions_end2018.csv", header=TRUE, sep=",", na=c("","NA"))
+
+# combine sales2018to & sales2018end
+sales2018 <- rbind(sales2011, sales2016, sales2018mar, sales2018end)
+summary(sales2005)
+
+# convert date variable into real date format
+sales2005$TIME <- as.POSIXct(sales2005$TIME, format = "%m/%d/%Y %H:%M")
+sales2018$TIME <- as.POSIXct(sales2018$TIME, format = "%m/%d/%Y %H:%M")
+
+# extract years from sales2018, to match columns of sales2005
+sales2018$Year <- format(sales2018$TIME, format="%Y")
+
+# combine sales2005 and sales2018
+sales <- rbind(sales2005, sales2018)
+```
+
+```{r}
+# check data sets
+str(sales)
+summary(sales) 
+
+# check rows with NA, and remove
+sales[which(is.na(sales$TIME)),]
+sales <- na.omit(sales)
+
+# str(sales2005)
+# str(sales2018)
+# str(sales2011)
+# str(sales2018end)
+
+# remove progress data sets no longer needed
+rm(sales2005)
+rm(sales2011)
+rm(sales2016)
+# rm(sales2018)
+rm(sales2018mar)
+rm(sales2018end)
+```
+
+
+# ----------------------------------------------------------------------------------
+# copy to a working data "trans" and create a Date variable by days
+```{r}
+# reserve sales as original sales data set, use strans as working set
+trans <- sales
+
+str(trans)
+
+# create a Date variable - "Y-m-d"
+trans$Date <- as.Date(trans$TIME)
+
+
+
+```
+
+
+# calculate sub-total of all transactions
+```{r}
+summary(trans)
+
+# create a variable of daily sub-total
+trans$subTotal <- trans$MWH * trans$PRICE
+
+```
+
+
+
+
+# ########### hourly transactions and prices ###########
+# calculate hourly average prices of sales and purchases
+```{r}
+avgPrice_hr <- data.frame(tapply(trans$PRICE, list(trans$TIME,trans$PROVISIONTYPE), mean))
+names(avgPrice_hr) <- c("avgPurchase.hr", "avgSale.hr")
+avgPrice_hr$Time <- rownames(avgPrice_hr)
+avgPrice_hr <- avgPrice_hr[ ,c(3,1,2)]
+
+# replace NAs with 0
+avgPrice_hr[is.na(avgPrice_hr)] <- 0
+
+# convert Time variable to POSIXct objects 
+avgPrice_hr$Time <- as.POSIXct(avgPrice_hr$Time, format = "%Y-%m-%d %H:%M")
+
+```
+
+# calculate hourly net-total
+```{r}
+netTotal_hr <- data.frame(tapply(trans$subTotal, trans$TIME, sum))
+# netTotal_hr[c(1:10,101:110,17158:17168), ]
+avgPrice_hr$netTotal.hr <- netTotal_hr[,1]
+
+```
+
+# calculate hourly volatilities
+```{r}
+
+# 1st, combine hourly average prices of sales and purchases to trans
+trans <- left_join(trans, avgPrice_hr, by=c("TIME"="Time"))
+
+
+# 2nd, separate Purchase and Sale under PROVISIONTYPE
+trans.purchase <- trans[trans$PROVISIONTYPE=="Purchase", ]
+trans.sale <- trans[trans$PROVISIONTYPE=="Sale", ]
+
+
+# 3nd, calculate volatility of hourly price for Purchase and Sale respectively
+avgPrice_hr$netTotal <- netTotal_hr[,1]
+
+# normalized deviation of prices vs average hourly price
+trans.purchase$ppVolatility.hr <- round(((trans.purchase$PRICE - trans.purchase$avgPurchase.hr) / trans.purchase$avgPurchase.hr), digits=3)
+trans.sale$psVolatility.hr <- round(((trans.sale$PRICE - trans.sale$avgSale.hr) / trans.sale$avgSale.hr), digits=3)
+
+# volatility of hourly prices for Purchase & Sale
+# purchase
+volPurchase_hr<- data.frame(tapply(trans.purchase$ppVolatility.hr, trans.purchase$TIME, mean))
+names(volPurchase_hr) <- "avg.ppVolatility.hr"
+volPurchase_hr$Time <- rownames(volPurchase_hr)
+volPurchase_hr$Time <- as.POSIXct(volPurchase_hr$Time, format = "%Y-%m-%d %H:%M")
+volPurchase_hr <- volPurchase_hr[ ,c(2,1)]
+
+# sale
+volSale_hr<- data.frame(tapply(trans.sale$psVolatility.hr, trans.sale$TIME, mean))
+names(volSale_hr) <- "avg.psVolatility.hr"
+volSale_hr$Time <- rownames(volSale_hr)
+volSale_hr$Time <- as.POSIXct(volSale_hr$Time, format = "%Y-%m-%d %H:%M")
+volSale_hr <- volSale_hr[ ,c(2,1)]
+
+str(volPurchase_hr)
+str(volSale_hr)
+
+
+# 4th, put average hourly volitilities of Purchase and Sale prices to avgPrice_hr
+avgPrice_hr <- left_join(avgPrice_hr, volPurchase_hr, by=c("Time"="Time"))
+avgPrice_hr <- left_join(avgPrice_hr, volSale_hr, by=c("Time"="Time"))
+
+str(avgPrice_hr)
+
+```
+
+
+# calculate hourly subtotal of purchase and sales
+```{r}
+prchsTotal_hr <- data.frame(tapply(trans.purchase$subTotal, trans.purchase$TIME, sum))
+names(prchsTotal_hr) <- "prchsTotal.hr"
+prchsTotal_hr$Time <- rownames(prchsTotal_hr)
+prchsTotal_hr$Time <- as.POSIXct(prchsTotal_hr$Time, format = "%Y-%m-%d %H:%M")
+
+saleTotal_hr <- data.frame(tapply(trans.sale$subTotal, trans.sale$TIME, sum))
+names(saleTotal_hr) <- "saleTotal.hr"
+saleTotal_hr$Time <- rownames(saleTotal_hr)
+saleTotal_hr$Time <- as.POSIXct(saleTotal_hr$Time, format = "%Y-%m-%d %H:%M")
+
+avgPrice_hr <- left_join(avgPrice_hr, prchsTotal_hr, by=c("Time"="Time"))
+avgPrice_hr <- left_join(avgPrice_hr, saleTotal_hr, by=c("Time"="Time"))
+
+```
+
+
+# calculate hourly price variance of purchase and sales
+```{r}
+trans.purchase$ppVariance <- (trans.purchase$ppVolatility.hr)^2
+trans.sale$psVariance <- (trans.sale$psVolatility.hr)^2
+
+# purchase
+variancePurchase_hr <- data.frame(tapply(trans.purchase$ppVariance, trans.purchase$TIME, sum))
+names(variancePurchase_hr) <- "sum.ppVariance.hr"
+variancePurchase_hr$Time <- rownames(variancePurchase_hr)
+variancePurchase_hr$Time <- as.POSIXct(variancePurchase_hr$Time, format = "%Y-%m-%d %H:%M")
+
+# sale
+varianceSale_hr <- data.frame(tapply(trans.sale$psVariance, trans.sale$TIME, sum))
+names(varianceSale_hr) <- "sum.psVariance.hr"
+varianceSale_hr$Time <- rownames(varianceSale_hr)
+varianceSale_hr$Time <- as.POSIXct(varianceSale_hr$Time, format = "%Y-%m-%d %H:%M")
+
+
+avgPrice_hr <- left_join(avgPrice_hr, variancePurchase_hr, by=c("Time"="Time"))
+avgPrice_hr <- left_join(avgPrice_hr, varianceSale_hr, by=c("Time"="Time"))
+
+str(avgPrice_hr)
+```
+
+
+# calculate moving averages in a 24 hours window (use k=25 for symmetry)
+```{r include=FALSE}
+avgPrice_hr$mavPurchase.hr <- rollmean(avgPrice_hr$avgPurchase.hr, k = 25, fill = NA)
+avgPrice_hr$mavSale.hr <- rollmean(avgPrice_hr$avgSale.hr, k = 25, fill = NA)
+
+avgPrice_hr$mavPrchsTotal.hr <- rollmean(avgPrice_hr$prchsTotal, k = 25, fill = NA)
+avgPrice_hr$mavSaleTotal.hr <- rollmean(avgPrice_hr$saleTotal, k = 25, fill = NA)
+avgPrice_hr$mavNetTotal.hr <- rollmean(avgPrice_hr$netTotal, k = 25, fill = NA)
+```
+
+# write out the avgPRice_hr to a .csv file
+```{r}
+avgPrice_hr[is.na(avgPrice_hr)] <- 0
+
+write.csv(avgPrice_hr, file = "market_hourly_data.csv")
+
+```
+
+
+
+
+# ########### daily transactions and prices ###########
+# calculate average daily prices
+```{r}
+# what is the price range?
+(max(trans$PRICE) - min(trans$PRICE))
+
+# what is the average of daily prices?
+avgPrice_daily <- data.frame(tapply(trans$PRICE, trans$Date, mean))
+avgPrice_daily$date <- as.Date(rownames(avgPrice_daily), "%Y-%m-%d")
+names(avgPrice_daily) <- c("avg_price","date")
+
+
+str(avgPrice_daily)
+head(avgPrice_daily)
+
+# plot a time serie of average daily prices
+ggplot(data=avgPrice_daily, aes(x=date, y=avg_price, group=1)) + 
+  geom_line(color="steelblue", size=1, alpha=0.5) + labs(x="Year", y="Average Price") +
+  scale_x_date(name="Year", date_breaks="1 year", date_labels="%Y") + ggtitle("Average Daily Price")
+  
+```
+
+# combine avgPrice_daily to trans
+```{r}
+trans <- left_join(trans, avgPrice_daily, by=c("Date"="date"))
+
+```
+
+# calculate volatility of daily price
+```{r}
+# normalized deviation of prices vs average daily price
+trans$pVolatility <- round(((trans$PRICE - trans$avg_price) / trans$avg_price), digits=3)
+
+# volatility coef. of daily prices
+volPrice_daily <- data.frame(tapply(trans$pVolatility, trans$Date, mean))
+names(volPrice_daily) <- "avg_volatile"
+
+volPrice_daily2 <- data.frame(tapply(trans$pVolatility, trans$Date, sum))
+names(volPrice_daily2) <- "sum_volatile"
+
+volPrice_daily$sum_volatile <- volPrice_daily2$sum_volatile
+
+volPrice_daily$avg_volatileX <- round(volPrice_daily$avg_volatile * 1000000, digits=3)
+volPrice_daily$sum_volatileX <- round(volPrice_daily$sum_volatile * 1000, digits=3)
+volPrice_daily$date <- as.Date(rownames(volPrice_daily), "%Y-%m-%d")
+
+head(volPrice_daily)
+
+str(volPrice_daily)
+
+rm(volPrice_daily1)
+rm(volPrice_daily2)
+
+# plot a time serie of votalities of daily prices
+ggplot(data=volPrice_daily, aes(x=date, y=avg_volatileX, group=1)) + 
+  geom_line(color="tomato", size=1, alpha=0.5) + labs(x="Year", y="Price Volatility Index") +
+  scale_x_date(name="Year", date_breaks="1 year", date_labels="%Y") + ggtitle("Daily Price Volatility")
+  
+
+```
+  
+

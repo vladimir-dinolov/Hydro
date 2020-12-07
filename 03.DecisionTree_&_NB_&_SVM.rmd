@@ -1,0 +1,353 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+# IST 707 - Final Project
+# Nicole Gruet-Matthews  
+# SVMs, DT, NB, and RandomForest Predictor
+# Can we predict class of outage (good, bad, or none)?  
+# Read in the preprocessed csv
+```{r}
+## Set the WD and read in the Train/Test data
+setwd <- ("C:/Users/ngruet/Desktop/Personal/Grad School/IST 707/project")
+df <- read.csv("preprocesseddata_12.03.2019.csv", header = TRUE)
+
+## What does our data look like?
+str(df)
+
+## We don't need all these variables
+## Change row 1 to row names and delete row 1 (dateTime)
+row.names(df) <- df$dateTime
+df <- df[,-1]
+
+## remove year (we do not need this)
+df <- df[,-4]
+
+str(df)
+
+## Modify R_24hrAvg and R_24hrVariability to int
+#df$R_24hrAvg <- as.numeric(df$R_24hrAvg)
+#df$R_24hrVariability <- as.numeric(df$R_24hrVariability)
+```
+# Split inital df into two df's for Ross and Boundary
+```{r}
+## Split the DF into 1 for Ross and 1 for Boundary
+RossDF <- df[,c(1,2,3,4,5,6,7,9,11,13,14,15,16)]
+BoundaryDF <- df[,c(1,2,3,4,5,6,8,10,12,13,14,15,17)]
+
+## Let's remove all NAs from these dfs
+RossDF <- RossDF[complete.cases(RossDF),]
+BoundaryDF <- BoundaryDF[complete.cases(BoundaryDF),]
+
+## Read it to a csv
+write.csv(RossDF,"workingRoss.csv")
+write.csv(BoundaryDF,"workingBoundary.csv")
+
+## what do these dfs look like?
+str(RossDF)
+str(BoundaryDF)
+
+## Manually verified there are no NAs/#DIV errors
+RossDF <- read.csv("workingRoss_NoNA.csv", header = TRUE)
+row.names(RossDF) <- RossDF$X
+RossDF <- RossDF[,-1]
+#RossDF$R_24hrVariability <- as.numeric(RossDF$R_24hrVariability)
+BoundaryDF <- read.csv("workingBoundary.csv", header = TRUE)
+row.names(BoundaryDF) <- BoundaryDF$X
+BoundaryDF <- BoundaryDF[,-1]
+
+## Let's confirm what these dfs look like...
+str(RossDF)
+str(BoundaryDF)
+```
+# Split the Ross and Boundary DF to identify the no, bad, and good class variable
+```{r}
+## We want to remove out some of the variables from these two DFs. 
+## Net_24hrAvg, R/B_24hrVariability, Load_24hrVar, and ross/boundary plant avail...
+## These are the variables we will remove to generate our new class variable!
+
+RossClass <- RossDF[,c(6,7,9,12,13)]
+RossWorking <- RossDF[,-c(6,9,12,13)]
+BoundaryClass <- BoundaryDF[,c(6,7,9,12,13)]
+BoundaryWorking <- BoundaryDF[,-c(6,9,12,13)]
+str(RossClass)
+str(RossWorking)
+str(BoundaryClass)
+str(BoundaryWorking)
+```
+## Generate the class level variable
+```{r}
+## What is the summary of our class-deriving variables?
+summary(RossClass)
+summary(BoundaryClass)
+
+## If ross/boundaryPlantAvail = 4 or 6, then there is no outage
+## If Net, R/B, or Load have 0-25% or 75-100% value, then they are higher volatility - bad outage.
+
+## write to csv and manipulate class in excel (quicker solution)
+write.csv(RossClass,"workingRossClass.csv",row.names=FALSE)
+write.csv(BoundaryClass,"workingBoundaryClass.csv",row.names=FALSE)
+
+##############################################
+## Discretize the quant variables to qualit
+#A <- cut(RossClass$Net_24hrAvg, breaks = c(-186791,1457,4299,12944,66286), labels = c("BAD","GOOD","GOOD","BAD"))
+#B <- cut(RossClass$R_24hrVariability , breaks = c(-0.3249,-0.0139,-0.0005,0.000343,0.7003), labels = c("BAD","GOOD","GOOD","BAD"))
+#C <- cut(RossClass$Load_24hrVar, breaks = c(-0.023,-0.0016,-0.00000331,0.0013,0.0210), labels = c("BAD","GOOD","GOOD","BAD"))
+#D <- cut(RossClass$Net_24hrAvg, breaks = c(0,4,5), labels = c("No Outage","Outage"))
+#RossClass <- data.frame(A,B,C,D)
+#str(RossClass)
+##############################################
+
+## was easier to manipulate and assign our class in excel. 
+RossLabel <- read.csv("RossLabel.csv",header = TRUE)
+RossLabel <- RossLabel[,-2]
+BoundaryLabel <- read.csv("BoundaryLabel.csv",header = TRUE)
+BoundaryLabel <- BoundaryLabel[,-2]
+
+## Now let's see what these label vectors look like
+str(RossLabel)
+str(BoundaryLabel)
+
+## Let's drop the label component into our working frames
+RossWorking <- data.frame(RossLabel,RossWorking)
+BoundaryWorking <- data.frame(BoundaryLabel, BoundaryWorking)
+
+## Remove the rows which have "No Outage". We don't need that!
+RossWorking <- RossWorking[!RossWorking$RossLabel == "No Outage",]
+BoundaryWorking <- BoundaryWorking[!BoundaryWorking$BoundaryLabel == "No Outage",]
+
+## YIPPEE - WE HAVE OUR DATA FRAMES DONE WITH PREPROCESSING.
+str(RossWorking)
+str(BoundaryWorking)
+```
+# Generate the test and train data set
+```{r}
+## Validation training sets will be a subset of the original.
+## Training and validation Ross sets
+Revery8rows <- seq(2,nrow(RossWorking),7)
+RossTrain <- RossWorking[-Revery8rows,]
+RossValidation <- RossWorking[Revery8rows,]
+str(RossTrain)
+str(RossValidation)
+
+## Training and validation Boundary sets
+Bevery8rows <- seq(2,nrow(BoundaryWorking),7)
+BoundaryTrain <- BoundaryWorking[-Bevery8rows,]
+BoundaryValidation <- BoundaryWorking[Bevery8rows,]
+str(BoundaryTrain)
+str(BoundaryValidation)
+```
+# Classifier Techniques
+## Discretization / Binary Inputs
+```{r}
+## Downlaod the libraries we need
+library(e1071)
+library(naivebayes)
+library(data.table)
+library(ggplot2)
+library(rpart)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+library(Cairo)
+library(RWeka)
+library(rattle)
+library(party)
+library(inum)
+
+## We need to transform our data to discretized factors.
+## label, hour, month, and day ==> as.factor
+BoundaryTrain$BoundaryLabel <- as.factor(BoundaryTrain$BoundaryLabel)
+BoundaryTrain$hour <- as.factor(BoundaryTrain$hour)
+BoundaryTrain$month <- as.factor(BoundaryTrain$month)
+BoundaryTrain$day <- as.factor(BoundaryTrain$day)
+BoundaryValidation$BoundaryLabel <- as.factor(BoundaryValidation$BoundaryLabel)
+BoundaryValidation$hour <- as.factor(BoundaryValidation$hour)
+BoundaryValidation$month <- as.factor(BoundaryValidation$month)
+BoundaryValidation$day <- as.factor(BoundaryValidation$day)
+RossTrain$RossLabel <- as.factor(RossTrain$RossLabel)
+RossTrain$hour <- as.factor(RossTrain$hour)
+RossTrain$month <- as.factor(RossTrain$month)
+RossTrain$day <- as.factor(RossTrain$day)
+RossValidation$RossLabel <- as.factor(RossValidation$RossLabel)
+RossValidation$hour <- as.factor(RossValidation$hour)
+RossValidation$month <- as.factor(RossValidation$month)
+RossValidation$day <- as.factor(RossValidation$day)
+
+## Let's save these as variables in case we run with non discretized
+RossTrain_Continuous <- RossTrain
+RossValidation_Continuous <- RossValidation
+BoundaryTrain_Continuous <- BoundaryTrain
+BoundaryValidation_Continuous <- BoundaryValidation
+
+## prchs, sale, flow, flowavg, and load ==> discretized into quartile buckets
+## Let's first identify the quartiles we care about and adjust the Boundary dfs
+summary(BoundaryTrain[,4:10])
+
+## Variable 1 of 6
+BoundaryTrain$MktingPrchs_24hrAvg <- cut(BoundaryTrain$MktingPrchs_24hrAvg, breaks = c(-100000,-7156.4,-6412.0,-2081.9,645),labels=c(1,2,3,4))
+BoundaryValidation$MktingPrchs_24hrAvg <- cut(BoundaryValidation$MktingPrchs_24hrAvg, breaks = c(-100000,-7156.4,-6412.0,-2081.9,645),labels=c(1,2,3,4))
+
+## Variable 2 of 6
+BoundaryTrain$MktingSale_24hrAvg <- cut(BoundaryTrain$MktingSale_24hrAvg, breaks = c(-1,6827,12490,16968,42536),labels=c(1,2,3,4))
+BoundaryValidation$MktingSale_24hrAvg <- cut(BoundaryValidation$MktingSale_24hrAvg, breaks = c(-1,6827,12490,16968,42536),labels=c(1,2,3,4))
+
+## Variable 3 of 6
+BoundaryTrain$B_NatFlow <- cut(BoundaryTrain$B_NatFlow, breaks = c(399,11548,16873,20339,97846),labels=c(1,2,3,4))
+BoundaryValidation$B_NatFlow <- cut(BoundaryValidation$B_NatFlow, breaks = c(399,11548,16873,20339,97846),labels=c(1,2,3,4))
+
+## Variable 4 of 6
+BoundaryTrain$BFlow_24hrAvg <- cut(BoundaryTrain$BFlow_24hrAvg, breaks = c(4170,12401,16851,19892,82699),labels=c(1,2,3,4))
+BoundaryValidation$BFlow_24hrAvg <- cut(BoundaryValidation$BFlow_24hrAvg, breaks = c(4170,12401,16851,19892,82699),labels=c(1,2,3,4))
+
+## Variable 5 of 6
+BoundaryTrain$Load_Actual <- cut(BoundaryTrain$Load_Actual, breaks = c(662,998,1147,1288,1902),labels=c(1,2,3,4))
+BoundaryValidation$Load_Actual <- cut(BoundaryValidation$Load_Actual, breaks = c(662,998,1147,1288,1902),labels=c(1,2,3,4))
+
+## Variable 6 of 6
+BoundaryTrain$Load_24hrAvg <- cut(BoundaryTrain$Load_24hrAvg, breaks = c(860,1042.7,1147.1,1242.2,1667.1),labels=c(1,2,3,4))
+BoundaryValidation$Load_24hrAvg <- cut(BoundaryValidation$Load_24hrAvg, breaks = c(860,1042.7,1147.1,1242.2,1667.1),labels=c(1,2,3,4))
+```
+```{r}
+## Now, identify the quartiles for the Ross DFs
+summary(RossTrain[,4:10])
+
+## Variable 1 of 6
+RossTrain$MktingPrchs_24hrAvg <- cut(RossTrain$MktingPrchs_24hrAvg, breaks = c(-189939,-6880.9,-10152.8,-1891.3,909.2),labels=c(1,2,3,4))
+RossValidation$MktingPrchs_24hrAvg <- cut(RossValidation$MktingPrchs_24hrAvg, breaks = c(-189939,-6880.9,-10152.8,-1891.3,909.2),labels=c(1,2,3,4))
+
+## Variable 2 of 6
+RossTrain$MktingSale_24hrAvg <- cut(RossTrain$MktingSale_24hrAvg, breaks = c(-1,6838,12594,16625,61928),labels=c(1,2,3,4))
+RossValidation$MktingSale_24hrAvg <- cut(RossValidation$MktingSale_24hrAvg, breaks = c(-1,6838,12594,16625,61928),labels=c(1,2,3,4))
+
+## Variable 3 of 6
+RossTrain$R_NatFlow <- cut(RossTrain$R_NatFlow, breaks = c(350,971,3253,4214,19993),labels=c(1,2,3,4))
+RossValidation$R_NatFlow <- cut(RossValidation$R_NatFlow, breaks = c(350,971,3253,4214,19993),labels=c(1,2,3,4))
+
+## Variable 4 of 6
+RossTrain$RFlow_24hrAvg <- cut(RossTrain$RFlow_24hrAvg, breaks = c(230,1167.6,3237,3925.4,19565),labels=c(1,2,3,4))
+RossValidation$RFlow_24hrAvg <- cut(RossValidation$RFlow_24hrAvg, breaks = c(230,1167.6,3237,3925.4,19565),labels=c(1,2,3,4))
+
+## Variable 5 of 6
+RossTrain$Load_Actual <- cut(RossTrain$Load_Actual, breaks = c(664,958,1103,1223,1803),labels=c(1,2,3,4))
+RossValidation$Load_Actual <- cut(RossValidation$Load_Actual, breaks = c(664,958,1103,1223,1803),labels=c(1,2,3,4))
+
+## Variable 6 of 6
+RossTrain$Load_24hrAvg <- cut(RossTrain$Load_24hrAvg, breaks = c(843,1026,1104,1155.5,1557),labels=c(1,2,3,4))
+RossValidation$Load_24hrAvg <- cut(RossValidation$Load_24hrAvg, breaks = c(843,1026,1104,1155.5,1557),labels=c(1,2,3,4))
+
+## Last preprocessing step - remove the labels!
+BoundaryTrain_NoLabel <- BoundaryTrain[,-1]
+BoundaryTrain_Label <- BoundaryTrain[,1]
+BoundaryValidation_NoLabel <- BoundaryValidation[,-1]
+BoundaryValidation_Label <- BoundaryValidation[,1]
+RossTrain_NoLabel <- RossTrain[,-1]
+RossTrain_Label <- RossTrain[,1]
+RossValidation_NoLabel <- RossValidation[,-1]
+RossValidation_Label <- RossValidation[,1]
+
+## Let's simplify the label column name to be just "label"
+colnames(BoundaryTrain)[1] <- "label"
+#colnames(BoundaryValidation)[1] <- "label"
+colnames(RossTrain)[1] <- "label"
+#colnames(RossValidation)[1] <- "label"
+
+## Remove the label from the validation
+BoundaryValidation <- BoundaryValidation[,-1]
+RossValidation <- RossValidation[,-1]
+
+str(BoundaryTrain)
+str(BoundaryValidation)
+str(RossTrain)
+str(RossValidation)
+```
+## Decision Tree
+```{r}
+##################### B O U N D A R Y #########################
+## Decision Tree using J48
+treeB1 <- J48(label~.,data=BoundaryTrain,control =Weka_control(U=FALSE,M=2,C=0.5))
+
+WOW("J48")
+
+## Use 10 fold cross-validation to evaluate the model
+e <- evaluate_Weka_classifier(treeB1,numFolds=10,seed=1,class=TRUE)
+e
+f <- evaluate_Weka_classifier(treeB1,numFolds=15,seed=500,class=TRUE)
+f
+
+## One more tree in J48
+treeB2 <- J48(label~.,data=BoundaryTrain,control =Weka_control(U=FALSE,M=5,C=0.5))
+g <- evaluate_Weka_classifier(treeB1,numFolds=10,seed=1,class=TRUE)
+g
+
+## Apply the model with test dataset
+predB<-predict(treeB1,newdata = BoundaryValidation, type=c("class"))
+write.csv(predB, file ="C:/Users/ngruet/Desktop/Personal/Grad School/IST 707/project/BoundaryPrediction_DT1.csv")
+
+## Running another tree  with rpart
+treeB3 <- rpart(label~., BoundaryTrain)
+fancyRpartPlot(treeB3)
+predB2 <- predict(treeB3,BoundaryValidation,type="class")
+Bresults <- data.frame(predB2,BoundaryValidation_Label)
+write.csv(Bresults,"BoundaryPrediction_DT2.csv")
+jpeg("treeB3.jpg")
+
+##################### R O S S #########################
+## Decision Tree using J48
+treeR1 <- J48(label~.,data=RossTrain,control =Weka_control(U=FALSE,M=2,C=0.5))
+
+WOW("J48")
+
+## Use 10 fold cross-validation to evaluate the model
+e <- evaluate_Weka_classifier(treeR1,numFolds=10,seed=1,class=TRUE)
+e
+f <- evaluate_Weka_classifier(treeR1,numFolds=15,seed=500,class=TRUE)
+f
+
+## One more tree in J48
+treeR2 <- J48(label~.,data=RossTrain,control =Weka_control(U=FALSE,M=5,C=0.5))
+g <- evaluate_Weka_classifier(treeR1,numFolds=10,seed=1,class=TRUE)
+g
+
+## Apply the model with test dataset
+predR<-predict(treeR1,newdata = RossValidation, type=c("class"))
+write.csv(predR, file ="C:/Users/ngruet/Desktop/Personal/Grad School/IST 707/project/RossPrediction_DT1.csv")
+
+## Running another tree  with rpart
+treeR3 <- rpart(label~., RossTrain)
+fancyRpartPlot(treeR3)
+predR2 <- predict(treeR3,RossValidation,type="class")
+Rresults <- data.frame(predR2,RossValidation_Label)
+write.csv(Rresults,"RossPrediction_DT2.csv")
+jpeg("treeR3.jpg")
+```
+## NaiveBayes
+```{r}
+## Let's check our train, validation, and test datasets
+str(BoundaryTrain)
+str(BoundaryValidation)
+str(RossTrain)
+str(RossValidation)
+
+################ B O U N D A R Y ####################
+## Run the e1071 NB!
+NB_Btrain <- naiveBayes(label~., data=BoundaryTrain,na.action=na.pass)
+NB_Btrain_pred <- predict(NB_Btrain,BoundaryValidation)
+
+table(NB_Btrain_pred,BoundaryValidation_Label)
+
+## Rate of misclassification error
+(468+430)/(2313+468+430+4517)
+
+###################### R O S S #######################
+## Run the e1071 NB!
+NB_Rtrain <- naiveBayes(label~., data=RossTrain,na.action=na.pass)
+NB_Rtrain_pred <- predict(NB_Rtrain,RossValidation)
+
+table(NB_Rtrain_pred,RossValidation_Label)
+
+## Rate of misclassification error
+(112+129)/(1069+3095+112+129)
+
+```

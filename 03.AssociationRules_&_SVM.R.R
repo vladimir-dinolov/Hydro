@@ -1,0 +1,100 @@
+
+
+# SVM model
+
+
+week_combined <- read.csv("allData_weekly_1207.csv")
+
+
+library(class)
+library(rsample)  # data splitting 
+library(e1071)
+library(caret) 
+split <- initial_split(week_combined, prop=.8, strata="outage_type")
+dtrain=training(split)
+dtest=testing(split)
+test_labels <- dtest$outage_type
+train_labels <- dtrain$outage_type
+dtrain_numonly <- dtrain[,-1]
+dtest_numonly <-dtest[,-1]
+
+table(dtest$outage_type) %>% prop.table() # if need to do additional plot
+table(dtrain$outage_type) %>% prop.table() # if need to do additional plot 
+
+barplot(table(dtest$outage_type) %>% prop.table() ,
+        col=rainbow(10), ylim=c(0,.9), las=2, 
+        main="Test Data")
+
+barplot(table(dtrain$outage_type) %>% prop.table() ,
+        col=rainbow(10), ylim=c(0,.9), las=2, 
+        main="Train Data")
+
+svm_outages<- svm(outage_type~., data = dtrain, kernel="radial", cost=100) #class.weights = c("go"=.5))
+svm_outages<- svm(outage_type~., data = dtrain, kernel="polynomial", cost=100, class.weights = c("bo"=10))
+
+pred=predict(svm_outages, newdata=dtest_numonly, type=c("class"))
+confusionMatrix(pred, test_labels)
+
+tuned_cost <- tune(method=svm, outage_type~., data = dtrain,
+                   kernel="polynomial", 
+                   ranges=list(cost=c(.01,.1,1,10,100), 
+                               class.weights= c("go" = .8, "bo" = 1.5, "go"=.5, "bo"=10)))
+summary(tuned_cost) 
+
+tuned_cost <- tune(method=svm, outage_type~., data = dtrain,
+                   kernel="polynomial", 
+                   ranges=list(cost=c(.01,.1,1,10,100)))
+summary(tuned_cost) 
+
+plot(svm_outages,dtest,avgNet.wk.avgNet.wk ~ poImpact.wk,  col=c("green", "yellow"), 
+     main = "bad and good situation interaction between po outage and avg flow", xlab = "OutageImp", ylab ="Flow" )
+
+str(dtest)
+
+
+
+#association rule mining 
+
+
+bd <- read.transactions("outage_arm_final.csv", format ="basket", sep=",", rm.duplicates = F)
+
+itemFrequencyPlot(bd, topN=20, type="absolute", main="Item Frequency Plot of Outage Data")
+
+rules <- arules::apriori(data=bd, 
+                         parameter=list(minlen=2), 
+                         appearance =list(default="lhs", rhs=c("b53_p_out")),
+                         control = list(verbose=F))
+
+summary(rules)
+
+subrules2<- sort(rules, by="count")
+inspect(subrules2)
+
+
+rules <- apriori(bd, 
+                 parameter=list(support =.0004, confidence =0, minlen=2, maxlen=4), 
+                 appearance = list(rhs=c("net_neg"), 
+                                   default="lhs"))
+
+#summary(rules)
+subrules2<- sort(rules, by=c("lift", "count"))
+inspect(subrules2)
+
+g<- plot(subrules2[c(1:13, 22, 25:27, 88:123)], method="graph", main = "PO high with UO high")
+g
+
+rules <- apriori(bd, 
+                 parameter=list(support =.0004, confidence =0, minlen=2, maxlen=3), 
+                 appearance = list(lhs=c("po_average", "uo_average"), 
+                                   default="rhs"))
+
+#summary(rules)
+subrules2<- sort(rules, by=c("lift"))  # count and lift 
+(inspect(subrules2))
+
+
+
+
+
+
+
