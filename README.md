@@ -24,6 +24,6 @@ The company must continuously adjust its hydroelectric supply chain to respond t
 
 The Syracuse team had the following recommendations for the hydro utility company: 
 
-• Apply data mining methodologies to predict when to stockpile energy in preparation for changes in flow, load, profit, energy supply and outages. 
-• Monitor and adjust renewable energy reserves to supplement hydro supply; sell excess energy based on market demand. 
-• Gather national, regional, and local solar and wind production data as well as natural gas market data to include in future predictive modeling. 
+* Apply data mining methodologies to predict when to stockpile energy in preparation for changes in flow, load, profit, energy supply and outages. 
+* Monitor and adjust renewable energy reserves to supplement hydro supply; sell excess energy based on market demand. 
+* Gather national, regional, and local solar and wind production data as well as natural gas market data to include in future predictive modeling. 
