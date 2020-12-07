@@ -3,13 +3,11 @@
 ## The "Why"
 Access to electricity is essential as its woven into nearly every aspect of our lives. Consumers use electricity in every second of every day, yet it is rare for people to consider where their power is coming from or how their power is generated. What would happen if consumers had to depend on unreliable energy? There could be a myriad of issues like traffic accidents, lapses in medical care, and a lack of stability in global economies. That's why it's important to ensure that all energy sources are sustainable and reliable. 
 
-My team at Syracuse University was outsourced by a hydroelectric utility company to identify ways to improve operational efficiency at the companies' various hydro plants. The goal was to optimize power outages by predicting the ideal outage schedule that would result in maximizing revenue streams and minimizing costs. After further research, the team discovered many variables affecting the companies ability to supply affordable, reliable, and renewable energy. 
+My team at Syracuse University was outsourced by a hydroelectric utility company to identify ways to improve operational efficiency at the companies' various hydro plants. The goal was to optimize power outages by predicting the ideal outage schedule that would result in maximizing revenue streams and minimizing costs. After further research, the team discovered many variables affecting the companies ability to supply affordable, reliable, and renewable energy. Variables like low flow of water supply, low load of units of energy, and high rates of forced outages or planned outages lead to either a deficit in energy supplies or a decrease in revenue streams. 
 
 ## About the Data 
 Four main data sets, containing hourly records from 1999 to 2018, were provided by the hydroelectric utility company in Excel spreadsheet format.
 ![](https://github.com/vladimir-dinolov/Portfolio/blob/main/images/Hydro%20Data.PNG?raw=true)
-
-
 
 Packages used for this project: cowplot, DT,  GGally, ggplot2, RColorBrewer, tidyverse, viridis
 
