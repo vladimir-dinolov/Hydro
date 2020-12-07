@@ -3,14 +3,10 @@ output:
   pdf_document: default
   html_document: default
 ---
-# IST 707 - Final Project
-# Nicole Gruet-Matthews  
-# SVMs, DT, NB, and RandomForest Predictor
-# Can we predict class of outage (good, bad, or none)?  
-# Read in the preprocessed csv
+
 ```{r}
 ## Set the WD and read in the Train/Test data
-setwd <- ("C:/Users/ngruet/Desktop/Personal/Grad School/IST 707/project")
+setwd <- ("C:\Users\Vlad\Desktop\Data Science\Data Analytics\Project")
 df <- read.csv("preprocesseddata_12.03.2019.csv", header = TRUE)
 
 ## What does our data look like?
@@ -283,7 +279,7 @@ g
 
 ## Apply the model with test dataset
 predB<-predict(treeB1,newdata = BoundaryValidation, type=c("class"))
-write.csv(predB, file ="C:/Users/ngruet/Desktop/Personal/Grad School/IST 707/project/BoundaryPrediction_DT1.csv")
+write.csv(predB, file ="C:\Users\Vlad\Desktop\Data Science\Data Analytics\Project\BoundaryPrediction_DT1.csv")
 
 ## Running another tree  with rpart
 treeB3 <- rpart(label~., BoundaryTrain)
@@ -312,7 +308,7 @@ g
 
 ## Apply the model with test dataset
 predR<-predict(treeR1,newdata = RossValidation, type=c("class"))
-write.csv(predR, file ="C:/Users/ngruet/Desktop/Personal/Grad School/IST 707/project/RossPrediction_DT1.csv")
+write.csv(predR, file ="C:\Users\Vlad\Desktop\Data Science\Data Analytics\Project\RossPrediction_DT1.csv")
 
 ## Running another tree  with rpart
 treeR3 <- rpart(label~., RossTrain)
