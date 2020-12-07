@@ -1,8 +1,4 @@
-
-
 # SVM model
-
-
 week_combined <- read.csv("allData_weekly_1207.csv")
 
 
@@ -91,10 +87,3 @@ rules <- apriori(bd,
 #summary(rules)
 subrules2<- sort(rules, by=c("lift"))  # count and lift 
 (inspect(subrules2))
-
-
-
-
-
-
-
