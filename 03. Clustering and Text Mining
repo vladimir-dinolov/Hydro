@@ -69,7 +69,7 @@ fviz_dist(outVari_euc, gradient=list(low="lightskyblue", mid="white", high="salm
 fviz_dist(outVari_cos, gradient=list(low="salmon", mid="white", high="lightskyblue"))
 
 ## ---- ----
-# create k-measn clustering
+# create k-means clustering
 km <- kmeans(outVari, centers=2)
 str(km)
 t(km$centers)
@@ -90,9 +90,7 @@ km3$cluster
 
 fviz_cluster(km3, data=outVari)
 
-
-########################################################
-#### text mining
+#### text mining ####
 
 po[1:5,c(1:5, 19)]
 uo[1:5,c(1:5, 19)]
