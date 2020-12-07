@@ -5,7 +5,7 @@ library(lubridate)
 library(data.table)
 library(tidyverse)
 
-setwd("/Users/svillarreal/Desktop/Data Analytics/Project/")
+setwd("C:\Users\Vlad\Desktop\Data Science\Data Analytics\Project")
 dfMain <- read.csv("UO - Boundary.csv")
 
 # change chr to datetime
