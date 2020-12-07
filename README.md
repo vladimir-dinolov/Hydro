@@ -22,7 +22,7 @@ To mitigate a loss in affordability, the company must flexibly plan when, how mu
 ### 3. Renewable Energy Sources
 The company must continuously adjust its hydroelectric supply chain to respond to hydro volatility caused by changes in load, flow, outage numbers, net hydro assets, and profit. Moreover, climate change affects the company's net hydro assets and adds a level of unexpected variability. In response to these changes, the company should strategically support its reliability and affordability plans by maintaining a pulse on wind and solar energy markets along with current and forecasted renewable energy market conditions. This will result in the company adjusting its renewable energy supply on a monthly basis by adding stockpiled energy or selling energy reserves to its competitors. 
 
-The Syracuse team made the following recommendations for the hydro utility company: 
+#### The Syracuse team made the following recommendations for the hydro utility company: 
 
 * Apply data mining methodologies to predict when to stockpile energy in preparation for changes in flow, load, profit, energy supply and outages. 
 * Monitor and adjust renewable energy reserves to supplement hydro supply; sell excess energy based on market demand. 
