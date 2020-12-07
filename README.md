@@ -1,4 +1,4 @@
-# Using Data to Power the Grid: A Case Study of a Hydroelectric Utility Company
+# Optimizing Energy Outages to Minimize Costs and Maximize Revenue: A Case Study of a Hydroelectric Utility Company
 
 ## Business Problem
 Access to electricity is essential as its woven into nearly every aspect of our lives. Consumers use electricity in every second of every day, yet it is rare for people to consider where their power is coming from or how their power is generated. What would happen if consumers had to depend on unreliable energy? There could be a myriad of issues like traffic accidents, lapses in medical care, and a lack of stability in global economies. That's why it's important to ensure that all energy sources are sustainable and reliable. 
