@@ -1,10 +1,5 @@
 ---
 title: "Hydro Outages - Marketing Data"
-author: "M.C."
-date: "`r Sys.Date()`"
-output:
-  html_document:
-    df_print: paged
 ---
 
 # check and load packages
@@ -24,7 +19,7 @@ rm(package.check)
 ```
 
 # set directory
-setwd("E:/Documents/OneDrive - Syracuse University/SU/Courses/IST 707/Project/Hydro Outages")
+setwd("C:\Users\Vlad\Desktop\Data Science\Data Analytics\Project")
 
 # ----------------------------------------------------------------------------------
 
