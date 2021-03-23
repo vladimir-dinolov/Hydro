@@ -29,6 +29,8 @@ The company must continuously adjust its hydroelectric supply chain to respond t
 * Gather national, regional, and local solar and wind production data as well as natural gas market data to include in future predictive modeling. 
 
 #### Visualizations to Summarize the Reasons for Energy Deficits:
+
 ![](https://github.com/vladimir-dinolov/Hydro/blob/main/Picture6.png)
+
 ![](https://github.com/vladimir-dinolov/Hydro/blob/main/Picture7.png)
 
