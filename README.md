@@ -32,5 +32,7 @@ The company must continuously adjust its hydroelectric supply chain to respond t
 
 ![](https://github.com/vladimir-dinolov/Hydro/blob/main/Picture6.png)
 
+
+
 ![](https://github.com/vladimir-dinolov/Hydro/blob/main/Picture7.png)
 
